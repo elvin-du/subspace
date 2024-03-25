@@ -5,6 +5,8 @@ mod aes;
 
 use core::num::NonZeroU32;
 use subspace_core_primitives::{PotCheckpoints, PotOutput, PotSeed};
+use std::time;
+use tracing::info;
 
 /// Proof of time error
 #[derive(Debug)]
@@ -30,6 +32,7 @@ pub enum PotError {
 ///
 /// Returns error if `iterations` is not a multiple of checkpoints times two.
 pub fn prove(seed: PotSeed, iterations: NonZeroU32) -> Result<PotCheckpoints, PotError> {
+    let now = time::Instant::now();
     if iterations.get() % u32::from(PotCheckpoints::NUM_CHECKPOINTS.get() * 2) != 0 {
         return Err(PotError::NotMultipleOfCheckpoints {
             iterations,
@@ -37,11 +40,14 @@ pub fn prove(seed: PotSeed, iterations: NonZeroU32) -> Result<PotCheckpoints, Po
         });
     }
 
-    Ok(aes::create(
+    let res = Ok(aes::create(
         seed,
         seed.key(),
         iterations.get() / u32::from(PotCheckpoints::NUM_CHECKPOINTS.get()),
-    ))
+    ));
+    let duration = now.elapsed();
+    info!("create slot time {:?}",duration);
+    res
 }
 
 /// Verify checkpoint, number of iterations is set across uniformly distributed checkpoints.
@@ -52,6 +58,7 @@ pub fn verify(
     iterations: NonZeroU32,
     checkpoints: &[PotOutput],
 ) -> Result<bool, PotError> {
+    let now = time::Instant::now();
     let num_checkpoints = checkpoints.len() as u32;
     if iterations.get() % (num_checkpoints * 2) != 0 {
         return Err(PotError::NotMultipleOfCheckpoints {
@@ -60,10 +67,13 @@ pub fn verify(
         });
     }
 
-    Ok(aes::verify_sequential(
+    let res = Ok(aes::verify_sequential(
         seed,
         seed.key(),
         checkpoints,
         iterations.get() / num_checkpoints,
-    ))
+    ));
+    let duration = now.elapsed();
+    info!("verify slot time {:?}",duration);
+    res
 }

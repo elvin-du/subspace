@@ -11905,6 +11905,7 @@ dependencies = [
  "rand",
  "subspace-core-primitives",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
